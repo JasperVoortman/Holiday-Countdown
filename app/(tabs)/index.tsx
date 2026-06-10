@@ -1,98 +1,163 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import { HolidayHeader } from '@/components/holiday-header';
+import { useHolidaySettings } from '@/contexts/holiday-context';
+import { formatDateRange, getHolidayVisual, getRegionLabel } from '@/lib/holiday-data';
 
 export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+  const { error, holidays, isLoadingHolidays, region, schoolYear } = useHolidaySettings();
+  const { height, width } = useWindowDimensions();
+  const isLandscape = width > height;
+  const cardWidth = isLandscape ? (width - 44) / 2 : undefined;
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+  return (
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <ScrollView
+        style={styles.screen}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}>
+        <HolidayHeader title={'Deltion\nVakanties'} subtitle={`Schooljaar ${schoolYear}`} />
+
+        <View style={[styles.cards, isLandscape && styles.cardsLandscape]}>
+          {isLoadingHolidays ? (
+            <View style={styles.stateCard}>
+              <ActivityIndicator color="#2563EB" />
+              <Text style={styles.stateText}>Vakantiedata ophalen...</Text>
+            </View>
+          ) : null}
+
+          {error ? (
+            <View style={styles.errorCard}>
+              <Text style={styles.errorTitle}>Data niet beschikbaar</Text>
+              <Text style={styles.errorText}>{error}</Text>
+            </View>
+          ) : null}
+
+          {!isLoadingHolidays && !error && holidays.length === 0 ? (
+            <View style={styles.stateCard}>
+              <Text style={styles.stateText}>Geen vakanties gevonden voor dit schooljaar.</Text>
+            </View>
+          ) : null}
+
+          {holidays.map((holiday) => {
+            const visual = getHolidayVisual(holiday.kind);
+
+            return (
+              <View
+                key={holiday.id}
+                style={[
+                  styles.card,
+                  isLandscape && { width: cardWidth },
+                  {
+                    backgroundColor: visual.cardBackgroundColor,
+                    borderColor: visual.cardBorderColor,
+                  },
+                ]}>
+                <View style={styles.cardHeader}>
+                  <Text style={styles.cardEmoji}>{visual.emoji}</Text>
+                  <Text style={styles.cardTitle}>{holiday.name}</Text>
+                </View>
+                <Text style={styles.cardDates}>{formatDateRange(holiday)}</Text>
+                <Text style={[styles.cardRegion, { color: visual.accentColor }]}>
+                  {holiday.appliesToAllRegions ? "Alle regio's" : getRegionLabel(region)}
+                </Text>
+              </View>
+            );
+          })}
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#2563EB',
+  },
+  screen: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+  },
+  content: {
+    paddingBottom: 16,
+  },
+  cards: {
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+  },
+  cardsLandscape: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'stretch',
+  },
+  card: {
+    minHeight: 88,
+    borderRadius: 9,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 13,
+  },
+  cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    marginBottom: 4,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  cardEmoji: {
+    fontSize: 17,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  cardTitle: {
+    color: '#020617',
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '800',
+    lineHeight: 20,
+  },
+  cardDates: {
+    color: '#334155',
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  cardRegion: {
+    fontSize: 12,
+    lineHeight: 18,
+    marginTop: 1,
+  },
+  stateCard: {
+    minHeight: 88,
+    borderRadius: 9,
+    backgroundColor: '#FFFFFF',
+    borderColor: '#E5E7EB',
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    padding: 16,
+  },
+  stateText: {
+    color: '#475569',
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  errorCard: {
+    borderRadius: 9,
+    backgroundColor: '#FEF2F2',
+    borderColor: '#FECACA',
+    borderWidth: 1,
+    padding: 14,
+  },
+  errorTitle: {
+    color: '#991B1B',
+    fontSize: 14,
+    fontWeight: '800',
+    marginBottom: 4,
+  },
+  errorText: {
+    color: '#7F1D1D',
+    fontSize: 13,
+    lineHeight: 18,
   },
 });

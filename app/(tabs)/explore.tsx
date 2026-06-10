@@ -1,112 +1,205 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Collapsible } from '@/components/ui/collapsible';
-import { ExternalLink } from '@/components/external-link';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Fonts } from '@/constants/theme';
+import { HolidayHeader } from '@/components/holiday-header';
+import { useHolidaySettings } from '@/contexts/holiday-context';
+import { formatFullDate, getHolidayVisual } from '@/lib/holiday-data';
 
-export default function TabTwoScreen() {
+export default function CountdownScreen() {
+  const { daysUntilNextHoliday, error, isLoadingHolidays, nextHoliday, schoolYear } =
+    useHolidaySettings();
+  const { height, width } = useWindowDimensions();
+  const isLandscape = width > height;
+  const visual = getHolidayVisual(nextHoliday?.kind ?? 'default');
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#D0D0D0', dark: '#353636' }}
-      headerImage={
-        <IconSymbol
-          size={310}
-          color="#808080"
-          name="chevron.left.forwardslash.chevron.right"
-          style={styles.headerImage}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText
-          type="title"
-          style={{
-            fontFamily: Fonts.rounded,
-          }}>
-          Explore
-        </ThemedText>
-      </ThemedView>
-      <ThemedText>This app includes example code to help you get started.</ThemedText>
-      <Collapsible title="File-based routing">
-        <ThemedText>
-          This app has two screens:{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/explore.tsx</ThemedText>
-        </ThemedText>
-        <ThemedText>
-          The layout file in <ThemedText type="defaultSemiBold">app/(tabs)/_layout.tsx</ThemedText>{' '}
-          sets up the tab navigator.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/router/introduction">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Android, iOS, and web support">
-        <ThemedText>
-          You can open this project on Android, iOS, and the web. To open the web version, press{' '}
-          <ThemedText type="defaultSemiBold">w</ThemedText> in the terminal running this project.
-        </ThemedText>
-      </Collapsible>
-      <Collapsible title="Images">
-        <ThemedText>
-          For static images, you can use the <ThemedText type="defaultSemiBold">@2x</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">@3x</ThemedText> suffixes to provide files for
-          different screen densities
-        </ThemedText>
-        <Image
-          source={require('@/assets/images/react-logo.png')}
-          style={{ width: 100, height: 100, alignSelf: 'center' }}
-        />
-        <ExternalLink href="https://reactnative.dev/docs/images">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Light and dark mode components">
-        <ThemedText>
-          This template has light and dark mode support. The{' '}
-          <ThemedText type="defaultSemiBold">useColorScheme()</ThemedText> hook lets you inspect
-          what the user&apos;s current color scheme is, and so you can adjust UI colors accordingly.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/develop/user-interface/color-themes/">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Animations">
-        <ThemedText>
-          This template includes an example of an animated component. The{' '}
-          <ThemedText type="defaultSemiBold">components/HelloWave.tsx</ThemedText> component uses
-          the powerful{' '}
-          <ThemedText type="defaultSemiBold" style={{ fontFamily: Fonts.mono }}>
-            react-native-reanimated
-          </ThemedText>{' '}
-          library to create a waving hand animation.
-        </ThemedText>
-        {Platform.select({
-          ios: (
-            <ThemedText>
-              The <ThemedText type="defaultSemiBold">components/ParallaxScrollView.tsx</ThemedText>{' '}
-              component provides a parallax effect for the header image.
-            </ThemedText>
-          ),
-        })}
-      </Collapsible>
-    </ParallaxScrollView>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <ScrollView
+        style={styles.screen}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}>
+        <HolidayHeader title="Countdown" />
+
+        <View style={[styles.body, isLandscape && styles.bodyLandscape]}>
+          <View
+            style={[
+              styles.imagePlaceholder,
+              isLandscape && styles.imagePlaceholderLandscape,
+              { backgroundColor: visual.backgroundColor },
+            ]}>
+            <Text style={styles.imageEmoji}>{visual.emoji}</Text>
+            <Text style={styles.imageText}>{visual.label}</Text>
+          </View>
+
+          <View style={[styles.countdownPanel, isLandscape && styles.countdownPanelLandscape]}>
+            {isLoadingHolidays ? (
+              <View style={styles.stateBlock}>
+                <ActivityIndicator color="#2563EB" />
+                <Text style={styles.caption}>Vakantiedata ophalen...</Text>
+              </View>
+            ) : null}
+
+            {error ? (
+              <View style={styles.errorCard}>
+                <Text style={styles.errorTitle}>Geen countdown beschikbaar</Text>
+                <Text style={styles.errorText}>{error}</Text>
+              </View>
+            ) : null}
+
+            {!isLoadingHolidays && !error && nextHoliday ? (
+              <>
+                <Text style={styles.caption}>Volgende vakantie:</Text>
+                <Text style={styles.holidayTitle}>{nextHoliday.name}</Text>
+
+                <View style={styles.daysCard}>
+                  <Text style={styles.daysNumber}>{daysUntilNextHoliday}</Text>
+                  <Text style={styles.daysLabel}>
+                    {daysUntilNextHoliday === 1 ? 'dag te gaan' : 'dagen te gaan'}
+                  </Text>
+                </View>
+
+                <View style={styles.divider} />
+
+                <Text style={styles.dateLine}>Start: {formatFullDate(nextHoliday.startDate)}</Text>
+                <Text style={styles.dateLine}>Einde: {formatFullDate(nextHoliday.endDate)}</Text>
+                <Text style={styles.schoolYear}>Schooljaar {schoolYear}</Text>
+              </>
+            ) : null}
+
+            {!isLoadingHolidays && !error && !nextHoliday ? (
+              <Text style={styles.caption}>Geen aankomende vakantie gevonden voor {schoolYear}.</Text>
+            ) : null}
+          </View>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  headerImage: {
-    color: '#808080',
-    bottom: -90,
-    left: -35,
-    position: 'absolute',
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#2563EB',
   },
-  titleContainer: {
+  screen: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  content: {
+    paddingBottom: 24,
+  },
+  body: {
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingTop: 24,
+  },
+  bodyLandscape: {
+    alignItems: 'stretch',
     flexDirection: 'row',
-    gap: 8,
+    gap: 24,
+  },
+  imagePlaceholder: {
+    width: '100%',
+    height: 160,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  imagePlaceholderLandscape: {
+    flex: 1,
+    height: 260,
+  },
+  imageEmoji: {
+    fontSize: 34,
+    marginBottom: 8,
+  },
+  imageText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  countdownPanel: {
+    alignItems: 'center',
+    width: '100%',
+  },
+  countdownPanelLandscape: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  stateBlock: {
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 24,
+  },
+  caption: {
+    color: '#334155',
+    fontSize: 15,
+    marginTop: 26,
+    textAlign: 'center',
+  },
+  holidayTitle: {
+    color: '#020617',
+    fontSize: 20,
+    fontWeight: '800',
+    marginTop: 12,
+    textAlign: 'center',
+  },
+  daysCard: {
+    width: 152,
+    height: 136,
+    borderRadius: 9,
+    backgroundColor: '#EFF6FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 18,
+  },
+  daysNumber: {
+    color: '#2563EB',
+    fontSize: 58,
+    fontWeight: '800',
+    lineHeight: 66,
+  },
+  daysLabel: {
+    color: '#1E293B',
+    fontSize: 13,
+    marginTop: 4,
+  },
+  divider: {
+    width: '100%',
+    height: 1,
+    backgroundColor: '#E5E7EB',
+    marginTop: 24,
+    marginBottom: 18,
+  },
+  dateLine: {
+    color: '#475569',
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  schoolYear: {
+    color: '#64748B',
+    fontSize: 12,
+    lineHeight: 18,
+    marginTop: 8,
+  },
+  errorCard: {
+    width: '100%',
+    borderRadius: 9,
+    backgroundColor: '#FEF2F2',
+    borderColor: '#FECACA',
+    borderWidth: 1,
+    marginTop: 24,
+    padding: 14,
+  },
+  errorTitle: {
+    color: '#991B1B',
+    fontSize: 14,
+    fontWeight: '800',
+    marginBottom: 4,
+  },
+  errorText: {
+    color: '#7F1D1D',
+    fontSize: 13,
+    lineHeight: 18,
   },
 });

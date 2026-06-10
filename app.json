@@ -3,7 +3,7 @@
     "name": "Holiday-Countdown",
     "slug": "Holiday-Countdown",
     "version": "1.0.0",
-    "orientation": "portrait",
+    "orientation": "default",
     "icon": "./assets/images/icon.png",
     "scheme": "holidaycountdown",
     "userInterfaceStyle": "automatic",
@@ -27,6 +27,12 @@
     },
     "plugins": [
       "expo-router",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Gebruik je locatie om automatisch je schoolvakantie-regio te bepalen."
+        }
+      ],
       [
         "expo-splash-screen",
         {
